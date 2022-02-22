@@ -1,0 +1,58 @@
+---
+title: "tidycensus"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(rworldmap)
+library(tidyr)
+library(tidycensus)
+opts_chunk$set(fig.align='center', dpi=100, message=FALSE, warning=FALSE, cache=TRUE)
+output <- opts_knit$get("rmarkdown.pandoc.to")
+if(!is.null(output)) {
+if (output=="html") opts_chunk$set(out.width = '400px') else
+  opts_chunk$set(out.width='.6\\linewidth')
+}
+```
+
+## Get Data and do basic Transformation
+
+```{r }
+a <- get_flows(
+   geography = "metropolitan statistical area",
+   variables = c("POP1YR", "POP1YRAGO"),
+   geometry = TRUE,
+   output = "wide",
+   show_call = TRUE,
+   key = '335e6ba6cab417fe8b2c91f62c337e4307e2912f',
+
+  )
+
+b <- data.frame(unique(a$FULL1_NAME))
+colnames(b) <- c('col1')
+c <- data.frame(do.call('rbind', strsplit(as.character(b$col1),',')))
+colnames(c) <- c('city','state_plus')
+d <- data.frame(do.call('rbind', strsplit(as.character(c$state_plus),' ')))
+colnames(d) <- c('state','etc')
+fin <- cbind(d$X2,c,b)
+colnames(fin) <- c('state','city','state_plus','FULL1_NAME')
+a_new <- merge(x = a, y = fin, by = "FULL1_NAME", all.x = TRUE)
+
+sPDF <- joinCountryData2Map( a_new , joinCode = "NAME" , nameJoinColumn = "state" )
+
+#par(mai=c(0,0,0.2,0),xaxs="i",yaxs="i")
+mapCountryData( sPDF, nameColumnToPlot="MOVEDIN" )
+#do.call( addMapLegend, c(mapParams, legendWidth=0.5, legendMar = 2))
+
+sPDF
+```
+### Include other data?
+```{r}
+
+
+
+```
