@@ -9,8 +9,10 @@ library(readr)
 library(dplyr)
 library(ggplot2)
 library(rworldmap)
+library(usmap)
 library(tidyr)
 library(tidycensus)
+library(mapdeck)
 opts_chunk$set(fig.align='center', dpi=100, message=FALSE, warning=FALSE, cache=TRUE)
 output <- opts_knit$get("rmarkdown.pandoc.to")
 if(!is.null(output)) {
@@ -20,7 +22,7 @@ if (output=="html") opts_chunk$set(out.width = '400px') else
 ```
 
 ## Get Data and do basic Transformation
-
+use this for the k_e_y: 335e6ba6cab417fe8b2c91f62c337e4307e2912f
 ```{r }
 a <- get_flows(
    geography = "metropolitan statistical area",
@@ -28,8 +30,7 @@ a <- get_flows(
    geometry = TRUE,
    output = "wide",
    show_call = TRUE,
-   key = '335e6ba6cab417fe8b2c91f62c337e4307e2912f',
-
+   key = '',
   )
 
 b <- data.frame(unique(a$FULL1_NAME))
@@ -41,18 +42,60 @@ colnames(d) <- c('state','etc')
 fin <- cbind(d$X2,c,b)
 colnames(fin) <- c('state','city','state_plus','FULL1_NAME')
 a_new <- merge(x = a, y = fin, by = "FULL1_NAME", all.x = TRUE)
+write.csv(a_new,'new_data.csv')
 
-sPDF <- joinCountryData2Map( a_new , joinCode = "NAME" , nameJoinColumn = "state" )
+phx_flows <- get_flows(
+  geography = "metropolitan statistical area",
+  msa = 38060,
+  year = 2019,
+  geometry = TRUE,
+  key = '335e6ba6cab417fe8b2c91f62c337e4307e2912f'
+  )
 
+phx_flows %>% 
+  head()
+
+top_move_in <- phx_flows %>% 
+  filter(!is.na(GEOID2), variable == "MOVEDIN") %>% 
+  slice_max(n = 25, order_by = estimate) %>% 
+  mutate(
+    width = estimate / 500,
+    #tooltip = paste0(
+    #  scales::comma(estimate * 5, 1),
+    #  " people moved from ", str_remove(FULL2_NAME, "Metro Area"),
+    #  " to ", str_remove(FULL1_NAME, "Metro Area"), " between 2014 and 2019"
+    #  )
+    )
+
+top_move_in %>% 
+  mapdeck(style = mapdeck_style("dark"), pitch = 45) %>% 
+  add_arc(
+    origin = "centroid1",
+    destination = "centroid2",
+    stroke_width = "width",
+    auto_highlight = TRUE,
+    highlight_colour = "#8c43facc",
+    tooltip = "tooltip"
+  )
+
+
+#sPDF <- joinCountryData2Map( a_new , joinCode = "NAME" , nameJoinColumn = "state" )
 #par(mai=c(0,0,0.2,0),xaxs="i",yaxs="i")
-mapCountryData( sPDF, nameColumnToPlot="MOVEDIN" )
+#mapCountryData( sPDF, nameColumnToPlot="MOVEDIN" )
 #do.call( addMapLegend, c(mapParams, legendWidth=0.5, legendMar = 2))
 
-sPDF
+
+plot_usmap(data = a_new, values = "MOVEDIN", color = "red") + 
+  scale_fill_continuous(name = "Population (2015)", label = scales::comma) + 
+  theme(legend.position = "right")
 ```
 ### Include other data?
 ```{r}
 
+hp <- read_csv('House_price_multifeatures.csv')
+head(hp)
 
-
+plot_usmap(data = a_new, values = "MOVEDIN", color = "red") + 
+  scale_fill_continuous(name = "Population (2015)", label = scales::comma) + 
+  theme(legend.position = "right")
 ```
