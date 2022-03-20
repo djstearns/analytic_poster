@@ -13,6 +13,15 @@ library(usmap)
 library(tidyr)
 library(tidycensus)
 library(mapdeck)
+#library(zillowR)
+library(fredr)
+library(stringr)
+#library(ggmap)
+#library(revgeo)
+library(RCurl)
+library(RJSONIO)
+fred_key <- '804592a605e2f219fea048cb93408683'
+fredr_set_key('804592a605e2f219fea048cb93408683')
 opts_chunk$set(fig.align='center', dpi=100, message=FALSE, warning=FALSE, cache=TRUE)
 output <- opts_knit$get("rmarkdown.pandoc.to")
 if(!is.null(output)) {
@@ -39,15 +48,68 @@ c <- data.frame(do.call('rbind', strsplit(as.character(b$col1),',')))
 colnames(c) <- c('city','state_plus')
 d <- data.frame(do.call('rbind', strsplit(as.character(c$state_plus),' ')))
 colnames(d) <- c('state','etc')
-fin <- cbind(d$X2,c,b)
+fin <- cbind(d$etc,c,b)
 colnames(fin) <- c('state','city','state_plus','FULL1_NAME')
 a_new <- merge(x = a, y = fin, by = "FULL1_NAME", all.x = TRUE)
+
 write.csv(a_new,'new_data.csv')
 
+#the above ends up in 8.4 Gb in the environment which makes it quite large, thus, breaking this chunk up and exporting to csv.
+```
+
+
+```{r}
+#Transform to get lat, lng and zip
+a_new <- read_csv('new_data.csv')
+head(a_new)
+
+#convert centroid to zip
+a_new[c('lng', 'lat')] <- str_split_fixed(a_new$centroid2, ',', 2)
+a_new$lng = substring(a_new$lng, 3)
+a_new$lat = str_sub(a_new$lat, 1, 16)
+unique(a_new$lng1)
+head(a_new) 
+
+
+#didnt work
+#start <- Sys.time()
+#This line do all the reverse geocoding using Photon as a provider
+#results<-revgeo(longitude=a_new$lng, 
+#                            latitude=a_new$lat, 
+#                            provider = 'photon', output="frame")
+#end <- Sys.time()
+#head(results)
+
+a_prime <- a_new %>%
+  reverse_geocode(
+    lat = lat,
+    long = lng,
+    method = 'osm',
+    full_results = TRUE
+  )
+
+
+#didn't work
+#latlon2zip <- function(lat, lon) {
+#    url <- sprintf("http://nominatim.openstreetmap.org/reverse?format=json&lat=%f&lon=%f&zoom=18&address#details=1", lat, lon)
+#    res <- fromJSON(url)
+#    return(res[["address"]][["postcode"]])
+#}
+names(a_new)
+#a_new %>%  mutate(zp = latlon2zip(lat=lat, lon=lng))
+
+
+write.csv(a_new,'new_data.csv')
+
+```
+
+```{r}
 phx_flows <- get_flows(
   geography = "metropolitan statistical area",
+  #breakdown = "RACE", #race labels can only be used for Year < 2016
+  #breakdown_labels = TRUE,
   msa = 38060,
-  year = 2019,
+  year = 2019, #only <= 2019
   geometry = TRUE,
   key = '335e6ba6cab417fe8b2c91f62c337e4307e2912f'
   )
@@ -55,9 +117,11 @@ phx_flows <- get_flows(
 phx_flows %>% 
   head()
 
+print(unique(phx_flows$RACE_label))
+
 top_move_in <- phx_flows %>% 
   filter(!is.na(GEOID2), variable == "MOVEDIN") %>% 
-  slice_max(n = 25, order_by = estimate) %>% 
+  slice_max(n = 50, order_by = estimate) %>% 
   mutate(
     width = estimate / 500,
     #tooltip = paste0(
@@ -67,8 +131,9 @@ top_move_in <- phx_flows %>%
     #  )
     )
 
+
 top_move_in %>% 
-  mapdeck(style = mapdeck_style("dark"), pitch = 45) %>% 
+  mapdeck(style = mapdeck_style("dark"), pitch = 45, token='pk.eyJ1IjoiZGpzdGVhcm5zNDAyIiwiYSI6ImNsMHpkaW0wbDI5bjgzZHBudDZmeGR5c3YifQ.IhJPEXwWZbIyn1imJghNkg') %>% 
   add_arc(
     origin = "centroid1",
     destination = "centroid2",
@@ -85,9 +150,15 @@ top_move_in %>%
 #do.call( addMapLegend, c(mapParams, legendWidth=0.5, legendMar = 2))
 
 
-plot_usmap(data = a_new, values = "MOVEDIN", color = "red") + 
-  scale_fill_continuous(name = "Population (2015)", label = scales::comma) + 
-  theme(legend.position = "right")
+
+#Plot 5.1 - basically useless
+#plot_usmap(data = a_new, values = "MOVEDIN", color = "red") + 
+#  scale_fill_continuous(name = "Population (2015)", label = scales::comma) + 
+#  theme(legend.position = "right")
+```
+
+```{r}
+
 ```
 ### Include other data?
 ```{r}
@@ -98,4 +169,16 @@ head(hp)
 plot_usmap(data = a_new, values = "MOVEDIN", color = "red") + 
   scale_fill_continuous(name = "Population (2015)", label = scales::comma) + 
   theme(legend.position = "right")
+
+unique(hp$OwnerState)
+
+#what about FRED data: https://fred.stlouisfed.org/series/MEDDAYONMARUS or https://fred.stlouisfed.org/series/ACTLISCOUUS
+
+fredr(
+  series_id = "MEDDAYONMARUS",
+  observation_start = as.Date("2019-01-01"),
+  observation_end = as.Date("2020-01-01"),
+  frequency = "m", # quarterly
+  units = "chg" # change over previous value
+)
 ```
