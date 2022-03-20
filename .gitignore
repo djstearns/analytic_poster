@@ -1,0 +1,5 @@
+
+R_data_cache/html/__packages
+*.RData
+*.rdb
+*.rdx
