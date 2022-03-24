@@ -1,0 +1,15 @@
+base
+knitr
+readr
+dplyr
+ggplot2
+sp
+rworldmap
+usmap
+tidyr
+tidycensus
+mapdeck
+fredr
+stringr
+RCurl
+RJSONIO

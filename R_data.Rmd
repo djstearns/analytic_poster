@@ -1,9 +1,11 @@
 ---
 title: "tidycensus"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
-```{r setup, include=FALSE}
+```{r setup}
 library(knitr)
 library(readr)
 library(dplyr)
@@ -20,6 +22,7 @@ library(stringr)
 #library(revgeo)
 library(RCurl)
 library(RJSONIO)
+library(tidyquant)
 fred_key <- '804592a605e2f219fea048cb93408683'
 fredr_set_key('804592a605e2f219fea048cb93408683')
 opts_chunk$set(fig.align='center', dpi=100, message=FALSE, warning=FALSE, cache=TRUE)
@@ -80,13 +83,6 @@ head(a_new)
 #end <- Sys.time()
 #head(results)
 
-a_prime <- a_new %>%
-  reverse_geocode(
-    lat = lat,
-    long = lng,
-    method = 'osm',
-    full_results = TRUE
-  )
 
 
 #didn't work
@@ -95,12 +91,18 @@ a_prime <- a_new %>%
 #    res <- fromJSON(url)
 #    return(res[["address"]][["postcode"]])
 #}
-names(a_new)
+#names(a_new)
 #a_new %>%  mutate(zp = latlon2zip(lat=lat, lon=lng))
 
 
-write.csv(a_new,'new_data.csv')
+#write.csv(a_new,'new_data.csv')
 
+```
+
+```{r}
+df2 <- tidyquant::tq_get("HOUST",get="economic.data",from="1900-01-01")
+
+yes
 ```
 
 ```{r}
@@ -131,6 +133,8 @@ top_move_in <- phx_flows %>%
     #  )
     )
 
+
+write.csv(top_move_in,'output.csv')
 
 top_move_in %>% 
   mapdeck(style = mapdeck_style("dark"), pitch = 45, token='pk.eyJ1IjoiZGpzdGVhcm5zNDAyIiwiYSI6ImNsMHpkaW0wbDI5bjgzZHBudDZmeGR5c3YifQ.IhJPEXwWZbIyn1imJghNkg') %>% 
