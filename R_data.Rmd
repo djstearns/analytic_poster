@@ -100,53 +100,189 @@ head(a_new)
 ```
 
 ```{r}
-df2 <- tidyquant::tq_get("HOUST",get="economic.data",from="1900-01-01")
+#df2 <- tidyquant::tq_get("HOUST",get="economic.data",from="1900-01-01")
 
-yes
+
 ```
 
 ```{r}
-phx_flows <- get_flows(
-  geography = "metropolitan statistical area",
+hi_dc_flows <- get_flows(
+  state = c('HI','DC'),
+  geography = "county", #metropolitan statistical area",
   #breakdown = "RACE", #race labels can only be used for Year < 2016
   #breakdown_labels = TRUE,
-  msa = 38060,
-  year = 2019, #only <= 2019
+  #msa = 38060,
+  #year = 2019, #only <= 2019
   geometry = TRUE,
   key = '335e6ba6cab417fe8b2c91f62c337e4307e2912f'
   )
 
-phx_flows %>% 
-  head()
-
-print(unique(phx_flows$RACE_label))
-
-top_move_in <- phx_flows %>% 
+HI_move_in <- hi_dc_flows %>% filter(FULL1_NAME %like% 'Hawaii') %>%
   filter(!is.na(GEOID2), variable == "MOVEDIN") %>% 
   slice_max(n = 50, order_by = estimate) %>% 
   mutate(
     width = estimate / 500,
-    #tooltip = paste0(
-    #  scales::comma(estimate * 5, 1),
-    #  " people moved from ", str_remove(FULL2_NAME, "Metro Area"),
-    #  " to ", str_remove(FULL1_NAME, "Metro Area"), " between 2014 and 2019"
-    #  )
+    tooltip = paste0(
+      scales::comma(estimate * 5, 1),
+      " people moved from ", str_remove(FULL2_NAME, "Metro Area"),
+      " to ", str_remove(FULL1_NAME, "Metro Area"), " between 2014 and 2019"
+      )
     )
 
+DC_move_in <- hi_dc_flows %>% filter(FULL1_NAME %like% 'District of Columbia') %>%
+  filter(!is.na(GEOID2), variable == "MOVEDIN") %>% 
+  slice_max(n = 50, order_by = estimate) %>% 
+  mutate(
+    width = estimate / 500,
+    tooltip = paste0(
+      scales::comma(estimate * 5, 1),
+      " people moved from ", str_remove(FULL2_NAME, "Metro Area"),
+      " to ", str_remove(FULL1_NAME, "Metro Area"), " between 2014 and 2019"
+      )
+    )
 
+ga_ct_flows <- get_flows(
+  state = c('GA','CT'),
+  geography = "county", #metropolitan statistical area",
+  #breakdown = "RACE", #race labels can only be used for Year < 2016
+  #breakdown_labels = TRUE,
+  #msa = 38060,
+  #year = 2019, #only <= 2019
+  geometry = TRUE,
+  key = '335e6ba6cab417fe8b2c91f62c337e4307e2912f'
+  )
+
+GA_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Georgia') %>% 
+  filter( variable == "MOVEDOUT") %>% 
+  slice_max(n = 50, order_by = estimate) %>% 
+  mutate(
+    width = estimate / 500,
+    tooltip = paste0(
+      scales::comma(estimate * 5, 1),
+      " people moved to ", str_remove(FULL2_NAME, "Metro Area"),
+      " from ", str_remove(FULL1_NAME, "Metro Area"), " between 2014 and 2019"
+      )
+    )
+
+CT_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Connecticut') %>%
+  filter(!is.na(GEOID2), variable == "MOVEDOUT") %>% 
+  slice_max(n = 50, order_by = estimate) %>% 
+  mutate(
+    width = estimate / 500,
+    tooltip = paste0(
+      scales::comma(estimate * 5, 1),
+      " people moved to ", str_remove(FULL2_NAME, "Metro Area"),
+      " from ", str_remove(FULL1_NAME, "Metro Area"), " between 2014 and 2019"
+      )
+    )
+
+ mapdeck(style = mapdeck_style("light"), pitch = 75, token='pk.eyJ1IjoiZGpzdGVhcm5zNDAyIiwiYSI6ImNsMHpkaW0wbDI5bjgzZHBudDZmeGR5c3YifQ.IhJPEXwWZbIyn1imJghNkg') %>% 
+  add_arc(
+    data = CT_move_out,
+    origin = "centroid1",
+    destination = "centroid2",
+    stroke_width = "width",
+    auto_highlight = TRUE,
+    stroke_from = "#fc0303",
+    tooltip = "tooltip",
+    layer_id ="1"
+  )  %>%
+    add_arc(
+    data = GA_move_out,
+    origin = "centroid1",
+    destination = "centroid2",
+    stroke_width = "width",
+    auto_highlight = TRUE,
+    stroke_from = "#fc0303",
+    tooltip = "tooltip",
+    layer_id = "2"
+  )  %>%
+   add_arc(
+    data = DC_move_in,
+    origin = "centroid1",
+    destination = "centroid2",
+    stroke_width = "width",
+    auto_highlight = TRUE,
+    stroke_from = "#00a30b",
+    tooltip = "tooltip",
+    layer_id = "3"
+  ) %>%
+    add_arc(
+    data = HI_move_in,
+    origin = "centroid1",
+    destination = "centroid2",
+    stroke_width = "width",
+    auto_highlight = TRUE,
+    stroke_from = "#00a30b",
+    tooltip = "tooltip",
+    layer_id = "4"
+  )
+```
+
+```{r}
+#delte me!
 write.csv(top_move_in,'output.csv')
 
-top_move_in %>% 
-  mapdeck(style = mapdeck_style("dark"), pitch = 45, token='pk.eyJ1IjoiZGpzdGVhcm5zNDAyIiwiYSI6ImNsMHpkaW0wbDI5bjgzZHBudDZmeGR5c3YifQ.IhJPEXwWZbIyn1imJghNkg') %>% 
+set_token( read.dcf("~/Documents/.googleAPI", fields = "MAPBOX"))
+df <- read.csv(paste0(
+  'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/'
+  , '3d-heatmap/heatmap-data.csv'
+))
+
+df <- df[!is.na(df$lng), ]
+
+library(geojsonsf)
+sf <- geojson_sf("https://symbolixau.github.io/data/geojson/SA2_2016_VIC.json")
+sf$e <- sf$AREASQKM16 * 10
+
+class(us_val$state.center)
+
+?sf::st_geometry
+
+head(sf)
+library(tidygeocoder)  
+st <- cbind(state.abb, state.center)
+cap <- read_csv('state_capitals.csv')
+cap$city_state <- str_c(cap$Capital,", ",cap$State)
+us_val <- merge(x=ndp, y=st, by.x=c("State"), by.y=c("state.abb"), all.x=TRUE) 
+
+try <- cap %>% geocode(city_state, method = "arcgis")
+
+try_lls <- try %>% select("Abr.", "lat", "long")
+
+library(tigris)
+st <- states() 
+
+sf <- geojson_sf("https://symbolixau.github.io/data/geojson/SA2_2016_VIC.json")
+sf$e <- sf$AREASQKM16 * 10
+class(sf$geometry)
+class(f_us$geo)
+st_1 <- st %>% select("NAME","geometry") 
+colnames(st_1) <- c('state_name','geometry')
+can_new <- try %>% select("State", "Abr.","lat","long")
+names(f_us)
+
+try1 <- merge(x=can_new, y=st_1, by.x=c("State"), by.y=c("state_name"))
+names(try1)
+f_us <- merge(x=try1, y=us_val, by.x=c("Abr."), by.y=c("State"))
+f_us <- f_us %>% filter(f_us$State == "Alabama")
+count(f_us)
+#f_us <- f_us %>% select("lat","long")
+  mapdeck(style = mapdeck_style("light"), pitch = 45, token='pk.eyJ1IjoiZGpzdGVhcm5zNDAyIiwiYSI6ImNsMHpkaW0wbDI5bjgzZHBudDZmeGR5c3YifQ.IhJPEXwWZbIyn1imJghNkg') %>% 
   add_arc(
+    data = top_move_in,
     origin = "centroid1",
     destination = "centroid2",
     stroke_width = "width",
     auto_highlight = TRUE,
     highlight_colour = "#8c43facc",
     tooltip = "tooltip"
+  ) %>%
+ add_polygon(
+    data = f_us
+    , layer = "polygon_layer"
+    , elevation = 10000
   )
-
 
 #sPDF <- joinCountryData2Map( a_new , joinCode = "NAME" , nameJoinColumn = "state" )
 #par(mai=c(0,0,0.2,0),xaxs="i",yaxs="i")
@@ -185,4 +321,32 @@ fredr(
   frequency = "m", # quarterly
   units = "chg" # change over previous value
 )
+
+
+```
+
+```{r}
+library(reshape2)
+city_house_data <- read_csv('City_zhvi_uc_sfr_tier_0.33_0.67_sm_sa_month.csv')
+mdat <- melt(city_house_data, 
+             id = c("RegionID",   "SizeRank",   "RegionName", "RegionType" ,"StateName","State","Metro","CountyName"))
+head(mdat)
+new_data <- city_house_data %>% select("RegionID", "SizeRank", "RegionName", "RegionType", "StateName", "State",  "Metro",  "CountyName","2019-01-31","2019-12-31")
+
+new_data$diff = new_data$`2019-12-31` - new_data$`2019-01-31`
+
+new_data_part = new_data %>% select("State", "diff")
+ndp <- new_data_part[!is.na(as.numeric(as.character(new_data_part$diff))),]
+ndp = ndp %>% group_by(State) %>% summarise(tot = sum(diff))
+
+write.csv(mdat,'new_city_data.csv')
+```
+
+```{r}
+zillow <- read_csv('new_city_data.csv')
+names(zillow)
+
+z19 <- zillow %>% filter(variable=="2014-01-31" | variable=="2019-12-31")
+unique(zillow$variable)
+#merge two datasets
 ```
