@@ -107,7 +107,7 @@ head(a_new)
 
 ```{r}
 hi_dc_flows <- get_flows(
-  state = c('HI','DC'),
+  state = c('ID','UT'),
   geography = "county", #metropolitan statistical area",
   #breakdown = "RACE", #race labels can only be used for Year < 2016
   #breakdown_labels = TRUE,
@@ -117,7 +117,7 @@ hi_dc_flows <- get_flows(
   key = '335e6ba6cab417fe8b2c91f62c337e4307e2912f'
   )
 
-HI_move_in <- hi_dc_flows %>% filter(FULL1_NAME %like% 'Hawaii') %>%
+ID_move_in <- hi_dc_flows %>% filter(FULL1_NAME %like% 'Idaho') %>%
   filter(!is.na(GEOID2), variable == "MOVEDIN") %>% 
   slice_max(n = 50, order_by = estimate) %>% 
   mutate(
@@ -129,7 +129,7 @@ HI_move_in <- hi_dc_flows %>% filter(FULL1_NAME %like% 'Hawaii') %>%
       )
     )
 
-DC_move_in <- hi_dc_flows %>% filter(FULL1_NAME %like% 'District of Columbia') %>%
+UT_move_in <- hi_dc_flows %>% filter(FULL1_NAME %like% 'Utah') %>%
   filter(!is.na(GEOID2), variable == "MOVEDIN") %>% 
   slice_max(n = 50, order_by = estimate) %>% 
   mutate(
@@ -142,7 +142,7 @@ DC_move_in <- hi_dc_flows %>% filter(FULL1_NAME %like% 'District of Columbia') %
     )
 
 ga_ct_flows <- get_flows(
-  state = c('GA','CT'),
+  state = c('MS','WV'),
   geography = "county", #metropolitan statistical area",
   #breakdown = "RACE", #race labels can only be used for Year < 2016
   #breakdown_labels = TRUE,
@@ -152,7 +152,7 @@ ga_ct_flows <- get_flows(
   key = '335e6ba6cab417fe8b2c91f62c337e4307e2912f'
   )
 
-GA_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Georgia') %>% 
+MS_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Mississippi') %>% 
   filter( variable == "MOVEDOUT") %>% 
   slice_max(n = 50, order_by = estimate) %>% 
   mutate(
@@ -164,7 +164,7 @@ GA_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Georgia') %>%
       )
     )
 
-CT_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Connecticut') %>%
+WV_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'West Virginia') %>%
   filter(!is.na(GEOID2), variable == "MOVEDOUT") %>% 
   slice_max(n = 50, order_by = estimate) %>% 
   mutate(
@@ -178,7 +178,7 @@ CT_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Connecticut') %>%
 
  mapdeck(style = mapdeck_style("light"), pitch = 75, token='pk.eyJ1IjoiZGpzdGVhcm5zNDAyIiwiYSI6ImNsMHpkaW0wbDI5bjgzZHBudDZmeGR5c3YifQ.IhJPEXwWZbIyn1imJghNkg') %>% 
   add_arc(
-    data = CT_move_out,
+    data = WV_move_out,
     origin = "centroid1",
     destination = "centroid2",
     stroke_width = "width",
@@ -188,7 +188,7 @@ CT_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Connecticut') %>%
     layer_id ="1"
   )  %>%
     add_arc(
-    data = GA_move_out,
+    data = MS_move_out,
     origin = "centroid1",
     destination = "centroid2",
     stroke_width = "width",
@@ -198,7 +198,7 @@ CT_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Connecticut') %>%
     layer_id = "2"
   )  %>%
    add_arc(
-    data = DC_move_in,
+    data = ID_move_in,
     origin = "centroid1",
     destination = "centroid2",
     stroke_width = "width",
@@ -208,7 +208,7 @@ CT_move_out <- ga_ct_flows %>% filter(FULL1_NAME %like% 'Connecticut') %>%
     layer_id = "3"
   ) %>%
     add_arc(
-    data = HI_move_in,
+    data = UT_move_in,
     origin = "centroid1",
     destination = "centroid2",
     stroke_width = "width",

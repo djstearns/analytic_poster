@@ -28,9 +28,11 @@ https://censusreporter.org/
 Get 2010 Census population by state
 
 ```{r}
-
+varspop <- load_variables(2010,"pl")
+varspop1 <- load_variables(2020,"pl")
+?load_variables
 pop10 <- get_decennial(geography = "state", variables = "P001001")
-
+# Sam is doing pubic transportation
 pop10 <- rename(pop10, "pop_2010" = "value")
 ```
 
@@ -44,43 +46,63 @@ pop20 <- rename(pop20, "pop_2020" = "value")
 Combine data sets
 
 ```{r}
-pop20_num <- pop20 %>% select(`pop_2020`)
-All_pop <- pop10 %>% add_column(pop20_num)
+pop20_num <- pop20 %>% select("NAME","pop_2020")
+All_pop <- merge(x=pop10, y=pop20_num, by=c("NAME"), all.x=TRUE) 
+
 
 All_pop_percent <- All_pop %>% mutate(increase_decrease = ((pop_2020- pop_2010)/pop_2010)*100) %>% select(NAME, variable, increase_decrease)
 ```
 
 Percent AZ race - potentially use this method to compare percentage of increase/decrease in state population from 2010/2020
 ```{r}
+ca_acs_data <- get_acs(
+  geography = "tract",
+  variables = c(
+    white = "B03002_003",
+    black = "B03002_004",
+    asian = "B03002_006",
+    hispanic = "B03002_012"
+  ), 
+  state = "CA",
+  geometry = TRUE,
+  year = 2019
+) 
+
+#v19 <- load_variables(2019, "acs5", cache = TRUE)
+#load the variables to inspect them
 v20 <- load_variables(2020, "acs5", cache = TRUE)
 Race20 <- v20 %>% filter(concept == 'RACE')
 
+#filter vars
 v20_1 <- v20 %>% filter(label %like% 'Hispanic')
 v20_2 <- v20 %>% filter(name %like% 'B03002')
-v2010
-#race_vars <- c(White = "B03002_003", Black = "B003002_004", Native = "B003002_005", Asian = "B003002_006", HIPI = "B003002_007", Hispanic = "B002003_012")
 
+#race_vars <- c(White = "B03002_003", Black = "B03002_004", Native = "B03002_005", Asian = "B03002_006", HIPI = "B03002_007", Hispanic = "B02003_012")
+```
+
+Let's make data to compare populations from 2010 to 2020 (available data)
+```{r}
 race_vars_20 <- c(White = "B02001_002", Black = "B02001_003", Native = "B02001_004", Asian = "B02001_005", HIPI = "B02001_006", Other= "B02001_007")
 
-HI_race_14 <- get_acs(
+HI_race_10 <- get_acs(
 geography = "county",
-state = "HI",
-year = 2014,
+state = "ID",
+year = 2010,
 variables = race_vars_20
 #summary_var = "B03002_001"
 )
-HI_race_14$yr = 2014
+HI_race_10$yr = 2010
 
-HI_race_19 <- get_acs(
+HI_race_20 <- get_acs(
 geography = "county",
-state = "HI",
-year = 2019,
+state = "ID",
+year = 2020,
 variables = race_vars_20
 #summary_var = "B03002_001"
 )
-HI_race_19$yr = 2019
+HI_race_20$yr = 2020
 
-HI_race_dif = rbind(HI_race_19,HI_race_14)
+HI_race_dif = rbind(HI_race_10,HI_race_20)
 HI_race_dif_grp <- HI_race_dif %>% group_by(variable, yr) %>% summarize(sum_est = sum(estimate)) %>% arrange(yr, desc=FALSE)
 
 ggplot(data=HI_race_dif_grp, aes(x=factor(yr), y=sum_est, fill=variable)) +
@@ -89,33 +111,35 @@ ggplot(data=HI_race_dif_grp, aes(x=factor(yr), y=sum_est, fill=variable)) +
 
 #create new dataset for tableau
 
-race_14 <- get_acs(
+race_10 <- get_acs(
 geography = "county",
-state = c("HI","CT","GA","DC"),
-year = 2014,
+state = c("AK", "AL", "AR", "AS", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "GU", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MP", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VI", "VT", "WA", "WI", "WV", "WY"),
+year = 2010,
 variables = race_vars_20
 #summary_var = "B03002_001"
 )
-race_14$yr = 2014
+race_10$yr = 2010
 
-race_19 <- get_acs(
+race_20 <- get_acs(
 geography = "county",
-state = c("HI","CT","GA","DC"),
-year = 2019,
+state = c("AK", "AL", "AR", "AS", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "GU", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MP", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VI", "VT", "WA", "WI", "WV", "WY"),
+year = 2020,
 variables = race_vars_20
 #summary_var = "B03002_001"
 )
-race_19$yr = 2019
+race_20$yr = 2020
 
-race_dif = rbind(race_19,race_14)
+race_dif = rbind(race_10,race_20)
 race_dif_grp <- race_dif %>% group_by(variable, yr, NAME) %>% summarize(sum_est = sum(estimate)) %>% arrange(yr, desc=FALSE)
 race_dif_grp <- race_dif_grp %>% rowwise() %>% mutate(st = trimws(strsplit(NAME,',',fixed=TRUE)[[1]][2]))
 
 cap <- read_csv('state_capitals.csv')
 cap <- cap %>% select("Abr.","State")
-
+names(cap) <- c("Abr","State")
 cap[nrow(cap) + 1,] <- as.list(c("DC", "District of Columbia"))
 race_dif_grp <- merge(x=race_dif_grp, y=cap, by.x=c("st"), by.y=c("State"), all.x=TRUE) 
 
 write.csv(race_dif_grp, "race_dif_grp.csv")
+
+#create new data set
 ```
